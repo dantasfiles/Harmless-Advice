@@ -1,0 +1,207 @@
+(object sys = [
+	openW:file = x.y:string.
+		if (x.exi (y)) 
+		then (x.openO (y)) 
+		else (x.openC (y)), 
+	openA:file = x.y:string.
+		(openappend y),
+	openR:file = x.y:string.
+		(openread y),
+	del:unit = x.y:string.
+		(delete y),
+	ren:unit = x.y:(string*string).
+		split (f1, f2) = y in 
+		(if (x.exi (f2)) 
+		then (x.renR (y)) 
+		else (x.renN (y))),	
+	wri:int = x.y:(file * string).
+		(write y),
+	rea:string = x.y:(file * int).
+		(read y),
+	exi:bool = x.y:(string).
+		(exists y),
+	openO:file = x.y:string.
+		(openwrite y),
+	openC:file = x.y:string.
+		(openwrite y),
+	renR:unit = x.y:(string*string).
+		(rename y),
+	renN:unit = x.y:(string*string).
+		(rename y),
+	sockA:sock = x.y:unit.
+		(socketactive y),
+	sockP:sock = x.y:unit.
+		(socketpassive y),
+	bin:unit = x.y:(sock * string * int).
+		(bind y),
+	lis:unit = x.y:(sock * int).
+		(listen y),
+	acc:(sock * string * int) = x.y:sock.
+		(accept y),
+	con:unit = x.y:(sock * string * int).
+		(connect y),
+	sen:int = x.y:(sock * string).
+		(send y),
+	rec:string = x.y:(sock * int).
+		(recv y)
+	])
+
+in
+
+nobashingfiles:{
+(before {sys.openO,sys.openA} (x,y,s,n) =
+	((print ("Attempt to overwrite file " ^ y ^ "\n")); 
+	(abort ())))
+
+(before {sys.del} (x,y,s,n) = 
+	((print ("Attempt to overwrite file " ^ y ^ "\n")); 
+		(abort ())))
+
+(before {sys.ren} (x,y,s,n) =
+	(split (f1, f2) = y in
+	((print ("Attempt to alter file " ^ f1 ^ "\n"));
+		(abort ()))))
+
+}
+
+
+limitwrite:{
+
+(ref byteswritten:int = 0)
+
+(int writelimit = 10)
+
+(before {sys.wri} (x,y, st, name) = 
+	(split (f, s) = y in
+	(if (((!byteswritten) + (size s)) > (writelimit)) 
+	then ((print "Attempt to write..\n");
+		(abort ())) 
+	else ())))
+
+(after {sys.wri} (x,y, st, name) = 
+	
+	((byteswritten := ((!byteswritten) + y));()))
+
+}
+
+
+limitcreate:{
+
+(ref filescreated:int = 0)
+
+(int createlimit = 10)
+
+(before {sys.openC} (x,y,s,n) =
+	if ((!filescreated + 1) > createlimit)
+	then ((print "Too many files created...\n");
+		(abort ())) 
+	else ())
+
+(after {sys.openC} (x, y,s, n) =
+	((filescreated := (!filescreated) + 1); ()))
+
+}
+
+
+limitobserve:{
+
+(ref filesobserved:int = 0)
+
+(int observelimit = 10)
+
+(before {sys.exi} (x,y,s,n) =
+	if ((!filesobserved + 1) > observelimit)
+	then ((print "Too many files observed...\n");
+		(abort ())) 
+	else ())
+
+(after {sys.exi} (x, y, s, n) =
+	((filesobserved := (!filesobserved) + 1); ()))
+
+}
+
+
+limitread:{
+
+(ref bytesread:int = 0)
+
+(int readlimit = 10)
+
+(before {sys.rea} (x,y, st, name) = 
+	(split (f, i) = y in
+	(if (((!bytesread) + i) > (readlimit)) 
+	then ((print "Attempt to read..\n");
+		(abort ())) 
+	else ())))
+
+(after {sys.rea} (x,y, st, name) = 
+	
+	((bytesread := ((!bytesread) + (size y)));()))
+
+}
+
+limitdirectories:{
+
+(string alloweddirectory = "tests/")
+
+(before {sys.openR, sys.openW, sys.openA, sys.openO, sys.openC, sys.del} (x,y,s,n) =
+	let 
+		(string directory = substring (y, 0, (lastindexof (y, "/")+1)))
+	in 
+	(if (directory == alloweddirectory)
+	then ()
+	else ((print "Attempt to go into forbidden directory..\n");
+		(abort ())) ))
+
+(before {sys.ren} (x,y,s,n) = 
+	split (f1, f2) = y in
+	(let 
+		(string d1 = substring (f1, 0, (lastindexof (f1, "/") + 1)))
+		(string d2 = substring (f2, 0, (lastindexof (f2, "/") + 1)))
+	in 
+	(if (d1 == alloweddirectory)
+	then (	if (d2 == alloweddirectory)
+		then ()
+		else ((print "Attempt to go into forbidden directory..\n");
+		(abort ())))
+	else ((print "Attempt to go into forbidden directory..\n");
+		(abort ())))))
+	
+}
+
+nonetwork:{
+
+(before {sys.sockA, sys.sockP} (x,y,s,n) =
+	((print ("Attempt to use network...\n")); 
+			(abort ())))
+
+(before {sys.bin, sys.con} (x,y,s,n) =
+	((print ("Attempt to use network...\n")); 
+		(abort ())))
+
+(before {sys.lis} (x,y,s,n) =
+	((print ("Attempt to use network...\n")); 
+		(abort ())))
+
+(before {sys.acc} (x,y,s,n) =
+	((print ("Attempt to use network...\n")); 
+		(abort ())))
+
+(before {sys.sen} (x,y,s,n) =
+	((print ("Attempt to use network...\n")); 
+		(abort ())))
+
+(before {sys.rec} (x,y,s,n) =
+	((print ("Attempt to use network...\n")); 
+		(abort ())))
+
+}
+
+in 
+
+(let
+	(file f = (sys.openR ("tests/test.txt")))
+in
+((print (sys.rea ((f, 7))));
+(print (sys.rea ((f, 7)))))
+)

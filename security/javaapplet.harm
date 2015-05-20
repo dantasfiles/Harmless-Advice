@@ -1,0 +1,96 @@
+(object sys = [
+	openW:file = x.y:string.
+		if (x.exi (y)) 
+		then (x.openO (y)) 
+		else (x.openC (y)), 
+	openA:file = x.y:string.
+		(openappend y),
+	openR:file = x.y:string.
+		(openread y),
+	del:unit = x.y:string.
+		(delete y),
+	ren:unit = x.y:(string*string).
+		split (f1, f2) = y in 
+		(if (x.exi (f2)) 
+		then (x.renR (y)) 
+		else (x.renN (y))),	
+	wri:int = x.y:(file * string).
+		(write y),
+	rea:string = x.y:(file * int).
+		(read y),
+	exi:bool = x.y:(string).
+		(exists y),
+	openO:file = x.y:string.
+		(openwrite y),
+	openC:file = x.y:string.
+		(openwrite y),
+	renR:unit = x.y:(string*string).
+		(rename y),
+	renN:unit = x.y:(string*string).
+		(rename y),
+	sockA:sock = x.y:unit.
+		(socketactive y),
+	sockP:sock = x.y:unit.
+		(socketpassive y),
+	bin:unit = x.y:(sock * string * int).
+		(bind y),
+	lis:unit = x.y:(sock * int).
+		(listen y),
+	acc:(sock * string * int) = x.y:sock.
+		(accept y),
+	con:unit = x.y:(sock * string * int).
+		(connect y),
+	sen:int = x.y:(sock * string).
+		(send y),
+	rec:string = x.y:(sock * int).
+		(recv y)
+	])
+
+in 
+
+javaapplet:{
+
+(string originatinghost = "127.0.0.1")
+
+(string allowedfile = read ((openread ("tests/config.txt"), 1000)))
+
+(before {sys.con} (x,y,s,n) =
+	(split (so, ip, port) = y in 
+	(if (ip == originatinghost)
+	then ()
+	else ((print ("Not originating host\n"));
+		(abort ())))))
+
+(after {sys.acc} (x,y,s,n) =
+	(split (so, ip, port) = y in 
+	(if (ip == originatinghost)
+	then ()
+	else ((print ("Not originating host\n"));
+		(abort ())))))
+
+(before {sys.openR, sys.openW, sys.openA, sys.openO, sys.openC, sys.del, sys.exi} (x,y,s,n) =
+	(if (y == allowedfile) 
+	then ()
+	else ((print ("Not allowed file..." ^ y ^ "\n"));
+		(abort ()))))
+
+(before {sys.ren} (x,y,s,n) =
+	(split (f1, f2) = y in
+	(if (f1 == allowedfile) 
+	then (	if (f2 == allowedfile)
+		then ()
+		else ((print ("Not allowed file..." ^ f2 ^ "\n"));
+		(abort ())))
+	else ((print ("Not allowed file..." ^ f1 ^ "\n"));
+		(abort ())))))
+
+
+}
+
+in
+
+(sys.openR ("tests/test.txt"));
+(print ("opened first"));
+(sys.openR ("tests/test2/txt"));
+(print ("opened second"))
+

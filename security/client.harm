@@ -1,0 +1,58 @@
+(object sys = [
+	openW:file = x.y:string.
+		if (x.exi (y)) 
+		then (x.openO (y)) 
+		else (x.openC (y)), 
+	openA:file = x.y:string.
+		(openappend y),
+	openR:file = x.y:string.
+		(openread y),
+	del:unit = x.y:string.
+		(delete y),
+	ren:unit = x.y:(string*string).
+		split (f1, f2) = y in 
+		(if (x.exi (f2)) 
+		then (x.renR (y)) 
+		else (x.renN (y))),	
+	wri:int = x.y:(file * string).
+		(write y),
+	rea:string = x.y:(file * int).
+		(read y),
+	exi:bool = x.y:(string).
+		(exists y),
+	openO:file = x.y:string.
+		(openwrite y),
+	openC:file = x.y:string.
+		(openwrite y),
+	renR:unit = x.y:(string*string).
+		(rename y),
+	renN:unit = x.y:(string*string).
+		(rename y),
+	sockA:sock = x.y:unit.
+		(socketactive y),
+	sockP:sock = x.y:unit.
+		(socketpassive y),
+	bin:unit = x.y:(sock * string * int).
+		(bind y),
+	lis:unit = x.y:(sock * int).
+		(listen y),
+	acc:(sock * string * int) = x.y:sock.
+		(accept y),
+	con:unit = x.y:(sock * string * int).
+		(connect y),
+	sen:int = x.y:(sock * string).
+		(send y),
+	rec:string = x.y:(sock * int).
+		(recv y)
+	])
+	
+in
+
+in
+
+(let 
+	(sock sa = (sys.sockA (())))
+in 
+	((sys.con ((sa, "127.0.0.1", 784)));
+	(sys.sen ((sa, "testing the network"))))
+)

@@ -1,0 +1,91 @@
+(object sys = [
+	openW:file = x.y:string.
+		if (x.exi (y)) 
+		then (x.openO (y)) 
+		else (x.openC (y)), 
+	openA:file = x.y:string.
+		(openappend y),
+	openR:file = x.y:string.
+		(openread y),
+	del:unit = x.y:string.
+		(delete y),
+	ren:unit = x.y:(string*string).
+		split (f1, f2) = y in 
+		(if (x.exi (f2)) 
+		then (x.renR (y)) 
+		else (x.renN (y))),	
+	wri:int = x.y:(file * string).
+		(write y),
+	rea:string = x.y:(file * int).
+		(read y),
+	exi:bool = x.y:(string).
+		(exists y),
+	openO:file = x.y:string.
+		(openwrite y),
+	openC:file = x.y:string.
+		(openwrite y),
+	renR:unit = x.y:(string*string).
+		(rename y),
+	renN:unit = x.y:(string*string).
+		(rename y),
+	sockA:sock = x.y:unit.
+		(socketactive y),
+	sockP:sock = x.y:unit.
+		(socketpassive y),
+	bin:unit = x.y:(sock * string * int).
+		(bind y),
+	lis:unit = x.y:(sock * int).
+		(listen y),
+	acc:(sock * string * int) = x.y:sock.
+		(accept y),
+	con:unit = x.y:(sock * string * int).
+		(connect y),
+	sen:int = x.y:(sock * string).
+		(send y),
+	rec:string = x.y:(sock * int).
+		(recv y)
+	])
+
+in 
+
+nobashingfiles:{
+(before {sys.openO,sys.openA} (x,y,s,n) =
+	((print ("Attempt to overwrite file " ^ y ^ "\n")); 
+	(abort ())))
+
+(before {sys.del} (x,y,s,n) = 
+	((print ("Attempt to overwrite file " ^ y ^ "\n")); 
+		(abort ())))
+
+(before {sys.ren} (x,y,s,n) =
+	(split (f1, f2) = y in
+	((print ("Attempt to alter file " ^ f1 ^ "\n"));
+		(abort ()))))
+
+}
+
+limitwrite:{
+
+(ref byteswritten:int = 0)
+
+(int writelimit = 15)
+
+(before {sys.wri} (x,y, st, name) = 
+	(split (f, s) = y in
+	(if (((!byteswritten) + (size s)) > (writelimit)) 
+	then ((print "Attempt to write too many characters..\n");
+		(abort ())) 
+	else ())))
+
+(after {sys.wri} (x,y, st, name) = 
+	((byteswritten := ((!byteswritten) + y));()))
+
+}
+
+
+in 
+(let 
+	(file f = sys.openW ("tests/test2.txt"))
+in 
+	(sys.wri ((f, "Write to file"));
+	sys.wri ((f, "Write some more to file"))))
