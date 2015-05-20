@@ -1,0 +1,313 @@
+open Source Util
+
+%%
+
+%term EOF
+| UNIT | STRINGTYP | BOOL | REF | STACK
+| TRUE | FALSE 
+| PRINT | IF | THEN | ELSE | LET | IN
+| CASE | OF | NIL | OBJECT 
+| BEFORE | AFTER
+| ASSIGN | ARROW | DOUBLEARROW | DOUBLECOLON
+| LPAREN | RPAREN | LBRACKET | RBRACKET | LBRACE | RBRACE
+| COLON | COMMA | SEMICOLON | PERIOD
+| UNDERSCORE | PIPE
+| BANG | EQUALS
+| ID of string
+| STRING of string
+| REF_TP
+| CARET | PLUS | EQEQ | ABORT | ITOS | INT of int | GT
+| INTTYP
+| SPLIT
+| SOCK | SOCKETACTIVE | SOCKETPASSIVE | BIND | LISTEN | ACCEPT | CONNECT | SEND | RECV
+| ASTERISK
+| NOW
+| FILE
+| OPENREAD | OPENWRITE | OPENAPPEND | WRITE | READ | DELETE | RENAME
+| SIZE
+| EXISTS | LASTINDEXOF | INDEXOF | SLEEP | SUBSTRING
+| SLASH | MINUS | TILDE
+
+
+%nonterm
+	prog of prog
+	| decs of dec list
+	| dec of dec
+	| objmeths of (m*typ*var*var*typ*exp) list
+	| some_objmeths of (m*typ*var*var*typ*exp) list
+	| objmeth of m*typ*var*var*typ*exp
+	| asps of asp list
+	| asp of asp
+	| adecs of dec list
+	| adec of dec
+	| time of time
+	| typ of typ
+	| objtyps of (m*p*typ) list
+	| some_objtyps of (m*p*typ) list
+	| objtyp of m * p * typ
+	| exp of exp
+	| pat of pat
+	| pts of (var * m) list
+	| some_pts of (var * m) list
+	| pt of var * m
+	| rexp of exp
+	| exps of exp list
+	| tuple_exps of exp
+	| typs of typ
+	| some_typs of typ list
+	| ids of var list
+	| rdec of dec
+
+%right ARROW
+%right REF_TP
+%nonassoc ELSE IN
+%left PERIOD
+%left SEMICOLON
+%left ASTERISK SLASH
+%left PLUS MINUS CARET
+%left ASSIGN
+%left BANG
+%left EQEQ GT
+%left EQUALS
+%left REF PRINT ITOS OPENREAD OPENWRITE OPENAPPEND WRITE READ DELETE RENAME NOW ABORT SOCKETACTIVE SOCKETPASSIVE BIND LISTEN ACCEPT CONNECT SEND RECV LPAREN SIZE EXISTS SLEEP LASTINDEXOF SUBSTRING INDEXOF
+
+%verbose
+%start prog
+%eop EOF
+%noshift EOF
+%name Harmless
+%pos	int * int
+
+%value ID ("bogus")
+
+%%
+
+prog:
+	decs IN asps IN exp	(Prog(decs, asps, exp))
+
+decs:
+	dec decs	(dec::decs)
+	| 	(nil)
+
+rdec:
+	LPAREN STRINGTYP ID EQUALS exp RPAREN	
+		(StringDec(Id.makeid ID,exp))
+	| LPAREN BOOL ID EQUALS exp RPAREN		
+		(BoolDec(Id.makeid ID,exp))
+	| LPAREN INTTYP ID EQUALS exp RPAREN		
+		(IntDec(Id.makeid ID,exp))
+	| LPAREN REF ID COLON typ EQUALS exp RPAREN	
+		(RefDec(Id.makeid ID, typ, exp))
+	| LPAREN OBJECT ID EQUALS LBRACKET objmeths RBRACKET RPAREN
+		(ObjDec(Id.makeid ID, objmeths))
+	| LPAREN FILE ID EQUALS exp RPAREN		
+		(FileDec(Id.makeid ID,exp))
+	| LPAREN SOCK ID EQUALS exp RPAREN		
+		(SockDec(Id.makeid ID,exp))
+
+dec:
+	rdec
+		(PosDec(make_pos rdecleft rdecright,rdec))
+
+objmeths:
+	some_objmeths	(some_objmeths)
+	| 		(nil)
+
+some_objmeths:
+	objmeth COMMA some_objmeths	(objmeth :: some_objmeths)
+	| objmeth			([objmeth])
+
+objmeth:
+	ID COLON typ EQUALS ID PERIOD ID COLON typ PERIOD exp
+		(Id.makeid ID1, typ, Id.makeid ID2, Id.makeid ID3, typ2, exp)
+
+
+
+asps:
+	asp asps	(asp :: asps)
+	|		(nil)
+
+asp:
+	ID COLON LBRACE adecs RBRACE
+		(Asp(Id.makeid ID, adecs))
+
+adecs:
+	dec adecs	(dec :: adecs)
+	| adec adecs	(adec :: adecs)
+	| 		(nil)
+
+adec:
+	LPAREN time LBRACE pts RBRACE LPAREN ID COMMA ID COMMA ID COMMA ID RPAREN EQUALS exp RPAREN
+		(AspDec(time, pts, Id.makeid ID1, Id.makeid ID2, Id.makeid ID3, Id.makeid ID4, exp))
+
+time:
+	BEFORE	(Before)
+	| AFTER	(After)
+
+typ:
+	UNIT				(UnitTyp)
+	| STRINGTYP			(StringTyp)
+	| BOOL				(BoolTyp)
+	| typ ARROW ID typ		(ArrTyp (typ, Id.makeid ID, typ2))
+	| LBRACKET objtyps RBRACKET	(ObjTyp objtyps)
+	| typ REF ID	%prec REF_TP	(RefTyp(typ, Id.makeid ID))
+	| STACK				(StackTyp)
+	| INTTYP			(IntTyp)
+	| SOCK				(SockTyp)
+	| FILE 				(FileTyp)
+	| LPAREN typs RPAREN 		(typs)
+
+typs:
+	typ ASTERISK some_typs	
+		(TupleTyp(typ :: some_typs))
+	| typ
+		(typ)
+
+some_typs:
+	typ ASTERISK some_typs	
+		(typ :: some_typs)
+	| typ
+		([typ])
+
+
+objtyps:
+	some_objtyps	(some_objtyps)
+	|		(nil)
+
+some_objtyps:
+	objtyp COMMA some_objtyps	(objtyp :: some_objtyps)
+	| objtyp			([objtyp])
+
+objtyp:
+	ID COLON ID typ		(Id.makeid ID1, Id.makeid ID2, typ)
+
+rexp:
+	ID			(VarExp (Id.makeid ID))
+	| exp SEMICOLON exp	(SeqExp(exp1,exp2))
+	| PRINT exp		(PrintExp exp)
+	| IF exp THEN exp ELSE exp	(IfExp (exp1, exp2, exp3))
+	| LET decs IN exp	(LetExp (decs, exp))
+	| exp PERIOD ID LPAREN exp RPAREN	(MethExp(exp1, Id.makeid ID, exp2))
+	| BANG exp		(DerefExp (exp))
+	| exp ASSIGN exp	(AssignExp (exp1,exp2))
+	| CASE exp OF LPAREN pat DOUBLEARROW exp PIPE UNDERSCORE DOUBLEARROW exp RPAREN
+		(CaseExp (exp1, pat, exp2, exp3))
+	| LPAREN RPAREN	(UnitExp)
+	| STRING	(StringExp STRING)
+	| TRUE		(TrueExp)
+	| FALSE		(FalseExp)
+	| INT 
+		(IntExp INT)
+	| ITOS exp 
+		(ItoSExp exp)
+	| exp CARET exp 
+		(ConcatExp (exp1, exp2))
+	| ABORT exp
+		(AbortExp exp)
+	| exp EQEQ exp
+		(EqExp (exp1, exp2))
+	| exp PLUS exp	
+		(PlusExp (exp1, exp2))
+	| exp GT exp
+		(GTExp (exp1, exp2))
+	| LPAREN tuple_exps RPAREN
+		(tuple_exps)
+	| SPLIT LPAREN ids RPAREN EQUALS exp IN exp
+		(SplitExp (ids, exp1, exp2))
+	| SOCKETACTIVE exp
+		(SocketExp (Active, exp))
+	| SOCKETPASSIVE exp 
+		(SocketExp (Passive, exp))
+	| BIND exp 
+		(BindExp exp)
+	| LISTEN exp 
+		(ListenExp exp)
+	| ACCEPT exp 
+		(AcceptExp exp)
+	| CONNECT exp 
+		(ConnectExp exp)
+	| SEND exp 
+		(SendExp exp)
+	| RECV exp
+		(RecvExp exp)
+	| NOW exp
+		(NowExp exp)
+	| OPENREAD exp 
+		(OpenExp (Read, exp)) 
+	| OPENWRITE exp 
+		(OpenExp (Write, exp)) 
+	| OPENAPPEND exp 
+		(OpenExp (Append, exp)) 
+	| WRITE exp
+		(WriteExp exp)
+	| READ exp 
+		(ReadExp exp)
+	| DELETE exp
+		(DeleteExp exp)
+	| RENAME exp
+		(RenameExp exp)
+	| SIZE exp 
+		(SizeExp exp)
+	| SLEEP exp
+		(SleepExp exp)
+	| INDEXOF exp
+		(IndexOfExp (First, exp))
+	| LASTINDEXOF exp
+		(IndexOfExp (Last, exp))
+	| EXISTS exp
+		(ExistsExp exp)
+	| SUBSTRING exp
+		(SubstringExp exp)
+	| exp ASTERISK exp
+		(MultExp (exp1, exp2))
+	| exp SLASH exp
+		(DivExp (exp1, exp2))
+	| exp MINUS exp 
+		(PlusExp (exp1, NegExp exp2))
+
+ids: 
+	ID COMMA ids	
+		(Id.makeid ID :: ids)
+	| ID
+		([Id.makeid ID])
+
+tuple_exps: 
+	exp COMMA exps	
+		(TupleExp (exp :: exps))
+	| exp
+		(exp)
+
+exps:
+	exp COMMA exps	
+		(exp :: exps)
+	| exp
+		([exp])
+
+exp: 
+    rexp 
+	(PosExp(make_pos rexpleft rexpright,rexp))
+
+pat:
+	NIL	(NilPat)
+	| LBRACE pts RBRACE LBRACKET ID COMMA ID COMMA ID RBRACKET DOUBLECOLON pat
+		(PtPat(pts, Id.makeid ID1, Id.makeid ID2, Id.makeid ID3, pat))
+	| UNDERSCORE DOUBLECOLON pat
+		(AllPat(pat))
+	| ID	(VarPat(Id.makeid ID))
+
+pts:
+	some_pts	(some_pts)
+	| 		(nil)
+
+some_pts:
+	pt COMMA some_pts	(pt :: some_pts)
+	| pt			([pt])
+
+pt:
+	ID PERIOD ID	(Id.makeid ID1, Id.makeid ID2)
+
+
+
+
+
+

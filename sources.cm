@@ -1,0 +1,44 @@
+group is
+(* magic so it works on all versions of SML/NJ *)
+
+ $/basis.cm
+ $/smlnj-lib.cm
+ $/ml-yacc-lib.cm
+
+id.sig
+id.sml
+
+protdom.sig
+protdom.sml
+
+errormsg.sml
+
+pp.sig
+pp.sml
+
+core.sig
+core.sml
+
+source.sig
+source.sml
+
+harmless.lex
+harmless.grm
+
+parse.sig
+parse.sml
+
+translate.sig
+translate.sml
+
+typecheck.sig
+typecheck.sml
+
+eval.sig
+eval.sml
+
+harmless.sig
+harmless.sml
+
+util.sig
+util.sml
